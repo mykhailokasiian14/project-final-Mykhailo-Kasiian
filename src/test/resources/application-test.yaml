@@ -1,8 +1,37 @@
-spring.cache.type: none
 spring:
+  cache:
+    type: none
   init:
     mode: always
   datasource:
     url: jdbc:postgresql://localhost:5433/jira-test
     username: jira
     password: JiraRush
+  mail:
+    host: localhost
+    username: test
+    password: test
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          starttls:
+            enable: false
+          auth: false
+
+# Тестові значення для змінних середовища
+MAIL_HOST: localhost
+MAIL_USERNAME: test
+MAIL_PASSWORD: test
+MAIL_PORT: 1025
+APP_HOST_URL: http://localhost:8080
+APP_TEST_MAIL: test@example.com
+GITHUB_CLIENT_ID: test
+GITHUB_CLIENT_SECRET: test
+GOOGLE_CLIENT_ID: test
+GOOGLE_CLIENT_SECRET: test
+GITLAB_CLIENT_ID: test
+GITLAB_CLIENT_SECRET: test
+DB_URL: jdbc:postgresql://localhost:5433/jira-test
+DB_USERNAME: jira
+DB_PASSWORD: JiraRush
