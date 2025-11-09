@@ -20,7 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.javarush.jira.bugtracking.ObjectType.TASK;
 import static com.javarush.jira.bugtracking.task.TaskUtil.fillExtraFields;
@@ -32,6 +35,10 @@ import static com.javarush.jira.ref.ReferenceService.getRefTo;
 public class TaskService {
     static final String CANNOT_ASSIGN = "Cannot assign as %s to task with status=%s";
     static final String CANNOT_UN_ASSIGN = "Cannot unassign as %s from task with status=%s";
+
+    private static final String STATUS_IN_PROGRESS = "in_progress";
+    private static final String STATUS_READY_FOR_REVIEW = "ready_for_review";
+    private static final String STATUS_DONE = "done";
 
     private final Handlers.TaskExtHandler handler;
     private final Handlers.ActivityHandler activityHandler;
@@ -139,5 +146,34 @@ public class TaskService {
         if (!userType.equals(possibleUserType)) {
             throw new DataConflictException(String.format(assign ? CANNOT_ASSIGN : CANNOT_UN_ASSIGN, userType, task.getStatusCode()));
         }
+    }
+
+    public Long timeInWork(Task task) {
+        return checkTimeBetweenStatuses(task.getId(), STATUS_IN_PROGRESS, STATUS_READY_FOR_REVIEW);
+    }
+
+    public Long timeInTest(Task task) {
+        return checkTimeBetweenStatuses(task.getId(), STATUS_READY_FOR_REVIEW, STATUS_DONE);
+    }
+
+    private Long checkTimeBetweenStatuses(Long taskId, String startStatus, String endStatus) {
+        List<Activity> activities = activityHandler.getRepository().findAllByTaskIdOrderByUpdatedDesc(taskId)
+                .stream()
+                .filter(act -> startStatus.equals(act.getStatusCode())
+                        || endStatus.equals(act.getStatusCode()))
+                .collect(Collectors.toMap(Activity::getStatusCode, act -> act, (existing, replacement) -> existing))
+                .values()
+                .stream()
+                .sorted(Comparator.comparing(Activity::getUpdated))
+                .toList();
+
+        if (activities.size() <= 1) {
+            throw new IllegalStateException("Not enough info to figure out the time frame");
+        }
+
+        LocalDateTime endTime = activities.get(0).getUpdated().truncatedTo(ChronoUnit.MINUTES);
+        LocalDateTime startTime = activities.get(1).getUpdated().truncatedTo(ChronoUnit.MINUTES);
+
+        return ChronoUnit.MINUTES.between(endTime, startTime);
     }
 }
